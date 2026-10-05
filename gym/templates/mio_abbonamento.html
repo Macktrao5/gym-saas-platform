@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Il Mio Abbonamento & QR Code</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-white font-sans antialiased min-h-screen flex flex-col justify-between">
+
+    <main class="max-w-xl mx-auto w-full py-12 px-6 flex-grow">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-2xl font-bold tracking-tight">Il Mio Abbonamento</h1>
+            <a href="{% url 'profile' %}" class="text-sm text-orange-400 hover:text-orange-300 font-medium transition">← Torna al Profilo</a>
+        </div>
+
+        {% if abbonamento %}
+            <!-- Card Abbonamento & QR -->
+            <div class="bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl text-center">
+                <div class="inline-block bg-orange-500/10 border border-orange-500/20 px-4 py-1.5 rounded-full text-orange-400 text-xs font-bold uppercase tracking-wider mb-6">
+                    Abbonamento Attivo
+                </div>
+
+                <p class="text-gray-400 text-sm mb-2">Mostra questo QR Code all'ingresso della palestra</p>
+
+                <!-- Box QR Code -->
+                {% if qr_code_base64 %}
+                    <div class="bg-white p-4 rounded-2xl inline-block shadow-lg my-6">
+                        <img src="data:image/png;base64,{{ qr_code_base64 }}" alt="QR Code Abbonamento" class="w-48 h-48 mx-auto">
+                    </div>
+                {% endif %}
+
+                <!-- Dettagli Scadenza -->
+                <div class="mt-4 border-t border-gray-800 pt-6 grid grid-cols-2 gap-4 text-left">
+                    <div>
+                        <span class="text-gray-500 text-xs block uppercase font-semibold">Titolare</span>
+                        <span class="text-white font-bold text-sm">{{ request.user.username }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 text-xs block uppercase font-semibold">Valido fino al</span>
+                        <span class="text-orange-400 font-bold text-sm">{{ abbonamento.end_date|date:"d M Y" }}</span>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <!-- Nessun abbonamento -->
+            <div class="bg-gray-900 border border-gray-800 rounded-3xl p-8 text-center">
+                <p class="text-gray-400 mb-4">Non hai ancora un abbonamento attivo.</p>
+                <a href="#" class="inline-block bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-xl transition text-sm">
+                    Acquista Subito un Abbonamento
+                </a>
+            </div>
+        {% endif %}
+    </main>
+
+</body>
+</html>

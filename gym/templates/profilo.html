@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Area Personale - TRUD GYMS</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN per i grafici dei progressi -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PWA Meta Tags & Manifest -->
+    <link rel="manifest" href="{% url 'manifest' %}">
+    <meta name="theme-color" content="#f97316">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TrudGyms">
+    
+    <!-- Script Registrazione Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('ServiceWorker registered! Scope:', reg.scope))
+                .catch(err => console.log('ServiceWorker registration failed:', err));
+            });
+        }
+    </script>
+</head>
+<body class="bg-gray-950 text-white font-sans antialiased min-h-screen flex flex-col justify-between">
+
+   <!-- Header / Navbar Semplice (Nascosto in stampa) -->
+    <header class="print:hidden bg-gray-900 border-b border-gray-800 py-4 px-6">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <a href="/" class="text-2xl font-black tracking-wider text-white">
+                TRUD <span class="text-orange-500">GYMS</span>
+            </a>
+
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-400">Benvenuto, <strong class="text-white">{{ request.user.username }}</strong></span>
+                
+                <!-- PULSANTE PER LA DASHBOARD ANALITICA -->
+                <a href="{% url 'tenant_dashboard' %}" class="bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 text-xs font-semibold px-4 py-2 rounded-xl transition-all">
+                    Business Analytics
+                </a>
+
+                <a href="{% url 'leaderboard' %}" class="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 text-xs font-semibold px-4 py-2 rounded-xl transition-all">
+                    Leaderboard
+                </a>
+
+                <a href="{% url 'chat' %}" class="bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 text-xs font-semibold px-4 py-2 rounded-xl transition-all">
+                    Chat Trainer
+                </a>
+
+                <a href="/" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold px-4 py-2 rounded-xl transition-all">
+                    Torna alla Home
+                </a>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto w-full py-10 px-6 flex-grow space-y-8">
+
+        <!-- Blocco Messaggi di Sistema Django -->
+        {% if messages %}
+            <div class="print:hidden space-y-3 mb-6">
+                {% for message in messages %}
+                    <div class="p-4 rounded-xl text-sm font-medium border flex items-center justify-between 
+                        {% if message.tags == 'success' %} bg-emerald-500/10 text-emerald-400 border-emerald-500/30
+                        {% elif message.tags == 'warning' %} bg-amber-500/10 text-amber-400 border-amber-500/30
+                        {% else %} bg-blue-500/10 text-blue-400 border-blue-500/30 {% endif %}">
+                        <span>{{ message }}</span>
+                        <button onclick="this.parentElement.remove()" class="text-xs opacity-70 hover:opacity-100">✕</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- Titolo Pagina (Nascosto in stampa) -->
+        <div class="print:hidden border-b border-gray-800 pb-4">
+            <h1 class="text-3xl font-extrabold text-white tracking-wide">La tua Dashboard Personale</h1>
+            <p class="text-gray-400 text-sm mt-1">Gestisci il tuo abbonamento, controlla le scadenze e consulta i tuoi programmi di allenamento.</p>
+        </div>
+
+        {% if prenotazione_oggi %}
+            <div class="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-6 mb-6 flex items-start space-x-4 shadow-xl">
+                <div class="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-emerald-400 flex-shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="text-white font-bold text-base">Promemoria WhatsApp</h3>
+                        <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full font-semibold">Attivo oggi</span>
+                    </div>
+                    <p class="text-gray-300 text-sm leading-relaxed">
+                        Ciao <span class="text-white font-semibold">{{ request.user.username }}</span>, ti ricordiamo che oggi hai il corso di <span class="text-emerald-400 font-semibold">{{ prenotazione_oggi.course.titolo }}</span>. Ti aspettiamo in sala!
+                    </p>
+                </div>
+            </div>
+        {% endif %}
+        <!-- TESSERA UNICA SOCIO (Fototessera con tasto modifica rapido + Dati Anagrafici) -->
+        <div class="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden mb-8">
+            <div class="absolute -right-20 -top-20 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4 mb-6 relative z-10">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🆔</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white tracking-wide">Tessera Anagrafica & Profilo Socio</h3>
+                        <p class="text-xs text-gray-400">Documento digitale ufficiale sincronizzato con il tuo account.</p>
+                    </div>
+                </div>
+                <span class="bg-orange-500/10 text-orange-400 border border-orange-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl uppercase tracking-wider">
+                    Socio Verificato
+                </span>
+            </div>
+
+            <!-- FOTOTESSERA CENTRALE CON PULSANTE DI CAMBIO RAPIDO -->
+            <div class="flex flex-col items-center justify-center mb-8 relative z-10">
+                <div class="relative group">
+                    <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center border-4 border-orange-500/40 shadow-xl shadow-orange-500/10">
+                        {% if profile.photo %}
+                            <img src="{{ profile.photo.url }}" alt="Foto Tessera" class="w-full h-full object-cover">
+                        {% else %}
+                            <span class="text-4xl font-black text-white">{{ request.user.username|slice:":1"|upper }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Pulsante rapido overlay per cambiare foto -->
+                    <button onclick="document.getElementById('changePhotoModal').classList.toggle('hidden')" 
+                        class="absolute bottom-0 right-0 bg-orange-600 hover:bg-orange-500 text-white p-2.5 rounded-full shadow-lg border-2 border-gray-900 transition-all cursor-pointer"
+                        title="Cambia foto profilo">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <span class="text-xs text-gray-400 mt-2 font-medium">Foto Profilo Ufficiale</span>
+
+                <!-- Modale compatto a scomparsa per il cambio foto -->
+                <div id="changePhotoModal" class="hidden mt-4 p-4 bg-gray-950 border border-gray-800 rounded-xl shadow-xl w-full max-w-sm">
+                    <form method="POST" enctype="multipart/form-data" action="{% url 'profile' %}" class="space-y-3">
+                        {% csrf_token %}
+                        <div class="text-xs text-gray-300">
+                            <label class="block font-semibold mb-1">Seleziona nuova immagine:</label>
+                            {{ form.photo }}
+                        </div>
+                        <div class="flex items-center justify-end gap-2 pt-2">
+                            <button type="button" onclick="document.getElementById('changePhotoModal').classList.add('hidden')" class="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg">Annulla</button>
+                            <button type="submit" class="px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg shadow-md">Carica Foto</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- GRIGLIA DATI ANAGRAFICI -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10">
+                <div class="bg-gray-950/80 border border-gray-800/80 p-4 rounded-xl">
+                    <span class="text-[10px] uppercase font-semibold text-gray-500 block mb-1">Nome e Cognome</span>
+                    <span class="text-sm font-bold text-white">{{ request.user.first_name|default:"Non specificato" }} {{ request.user.last_name }}</span>
+                </div>
+
+                <div class="bg-gray-950/80 border border-gray-800/80 p-4 rounded-xl">
+                    <span class="text-[10px] uppercase font-semibold text-gray-500 block mb-1">Username / Nickname</span>
+                    <span class="text-sm font-bold text-orange-400">@{{ request.user.username }}</span>
+                </div>
+
+                <div class="bg-gray-950/80 border border-gray-800/80 p-4 rounded-xl">
+                    <span class="text-[10px] uppercase font-semibold text-gray-500 block mb-1">Età</span>
+                    <span class="text-sm font-bold text-white">{% if profile.age %}{{ profile.age }} anni{% else %}Non inserita{% endif %}</span>
+                </div>
+
+                <div class="bg-gray-950/80 border border-gray-800/80 p-4 rounded-xl">
+                    <span class="text-[10px] uppercase font-semibold text-gray-500 block mb-1">Altezza</span>
+                    <span class="text-sm font-bold text-white">{% if profile.height %}{{ profile.height }} cm{% else %}Non inserita{% endif %}</span>
+                </div>
+
+                <div class="bg-gray-950/80 border border-gray-800/80 p-4 rounded-xl">
+                    <span class="text-[10px] uppercase font-semibold text-gray-500 block mb-1">Peso Corporeo</span>
+                    <span class="text-sm font-bold text-white">{% if profile.weight %}{{ profile.weight }} kg{% else %}Non inserito{% endif %}</span>
+                </div>
+
+                <div class="bg-gray-950/80 border border-gray-800/80 p-4 rounded-xl">
+                    <span class="text-[10px] uppercase font-semibold text-gray-500 block mb-1">Contatto Telefonico</span>
+                    <span class="text-sm font-bold text-white">{{ profile.phone|default:"Non inserito" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Rapida per il QR Code Abbonamento -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 mt-6 flex items-center justify-between">
+            <div>
+                <h3 class="text-white font-bold text-lg">Il Tuo Pass d'Ingresso</h3>
+                <p class="text-gray-400 text-sm mt-1">Mostra il QR code all'ingresso della struttura.</p>
+            </div>
+            <a href="{% url 'mio_abbonamento' %}" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-5 rounded-xl transition text-sm">
+                Visualizza QR Code →
+            </a>
+        </div>
+
+        <!-- SEZIONE 1: ABBONAMENTO UTENTE (Nascosto in stampa) -->
+        <div class="print:hidden bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-orange-500/10 p-2.5 rounded-xl text-orange-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white tracking-wide">Il tuo Abbonamento</h3>
+                </div>
+
+                <div>
+                    {% if subscription %}
+                        {% if subscription.is_expired %}
+                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                                Scaduto
+                            </span>
+                        {% else %}
+                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                Attivo e Regolare
+                            </span>
+                        {% endif %}
+                    {% else %}
+                        <span class="px-3 py-1 text-xs font-semibold rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            Non registrato
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if subscription %}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    <div class="bg-gray-800/50 p-3.5 rounded-xl border border-gray-800">
+                        <span class="text-gray-400 block text-xs uppercase tracking-wider mb-1">Piano Selezionato</span>
+                        <span class="text-white font-semibold text-base truncate block">{{ subscription.plan.name }}</span>
+                    </div>
+                    
+                    <div class="bg-gray-800/50 p-3.5 rounded-xl border border-gray-800">
+                        <span class="text-gray-400 block text-xs uppercase tracking-wider mb-1">Data di Inizio</span>
+                        <span class="text-white font-medium">{{ subscription.start_date|date:"d M Y" }}</span>
+                    </div>
+
+                    <div class="bg-gray-800/50 p-3.5 rounded-xl border border-gray-800">
+                        <span class="text-gray-400 block text-xs uppercase tracking-wider mb-1">Scadenza</span>
+                        <span class="text-white font-medium {% if subscription.is_expired %}text-red-400{% endif %}">
+                            {{ subscription.end_date|date:"d M Y" }}
+                        </span>
+                    </div>
+
+                    <div class="bg-gray-800/50 p-3.5 rounded-xl border border-gray-800">
+                        <span class="text-gray-400 block text-xs uppercase tracking-wider mb-1">Tempo Rimasto</span>
+                        <span class="text-orange-400 font-bold text-base">
+                            {% if subscription.is_expired %}
+                                Scaduto
+                            {% elif subscription.days_left == 1 %}
+                                1 Giorno rimanente
+                            {% else %}
+                                {{ subscription.days_left }} Giorni rimanenti
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                {% if subscription.is_expired %}
+                    <div class="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-300 text-sm flex items-center justify-between">
+                        <span>Il tuo abbonamento è scaduto. Rinnovalo subito per continuare ad accedere ai servizi!</span>
+                    </div>
+                {% endif %}
+
+                <!-- Pulsante di Rinnovo/Pagamento Sicuro Stripe -->
+                <div class="mt-6 pt-4 border-t border-gray-800 flex items-center justify-between">
+                    <span class="text-xs text-gray-400">Gestione rinnovi e pagamenti</span>
+                    <a href="{% url 'crea_checkout_stripe' %}" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                        Paga Abbonamento (Stripe)
+                    </a>
+                </div>
+
+            {% else %}
+                <div class="text-center py-6">
+                    <p class="text-gray-400 mb-4">Al momento non risulti avere un abbonamento attivo registrato sul tuo profilo.</p>
+                    <a href="{% url 'index' %}" class="inline-block bg-orange-600 hover:bg-orange-500 text-white font-medium px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-orange-600/20">
+                        Scegli una Palestra o Piano
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Sezione Smart Pass & QR Check-in -->
+        <div class="bg-gradient-to-r from-gray-900 via-gray-900 to-indigo-950/30 border border-indigo-500/30 rounded-2xl p-6 shadow-2xl space-y-6 mt-8 relative overflow-hidden">
+            <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            {% if user_pass %}
+                <div class="mt-6 p-6 bg-gray-900 rounded-2xl border border-gray-800">
+                    <h3 class="text-lg font-bold text-white mb-4">La tua Tessera Digitale</h3>
+                    <div class="flex flex-wrap gap-4">
+                        <!-- Pulsante Apple Wallet -->
+                        <a href="{% url 'download_apple_pass' user_pass.pass_code %}" class="bg-black hover:bg-gray-900 text-white border border-gray-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                            <span> Aggiungi ad Apple Wallet</span>
+                        </a>
+                        
+                        <!-- Pulsante Google Wallet -->
+                        <a href="{% url 'download_google_pass' user_pass.pass_code %}" class="bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 rounded-lg flex items-center gap-2 font-medium">
+                            <span>G Salva su Google Wallet</span>
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-gray-400 mt-4">Non hai ancora una tessera attiva. Contatta la reception.</p>
+            {% endif %}
+
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4 relative z-10">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">🎫</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            TrudGyms Digital Pass <span class="bg-indigo-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest">NFC & QR</span>
+                        </h3>
+                        <p class="text-xs text-gray-400">Il tuo lasciapassare digitale per l'accesso autonomo ai tornelli della palestra.</p>
+                    </div>
+                </div>
+                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Pass Valido
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center relative z-10 bg-gray-950/60 border border-gray-800 p-5 rounded-xl">
+                <!-- Vero QR Code Dinamico Scannabile -->
+                <div class="bg-white p-3 rounded-xl flex items-center justify-center shadow-inner w-36 h-36 mx-auto md:mx-0">
+                    {% if qr_code_base64 %}
+                        <img src="data:image/png;base64,{{ qr_code_base64 }}" alt="Digital Pass QR Code" class="w-full h-full object-contain">
+                    {% else %}
+                        <p class="text-xs text-black font-semibold text-center">QR Code non disponibile</p>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-3 md:col-span-2 text-center md:text-left">
+                    <div>
+                        <span class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Titolare Abbonamento</span>
+                        <h4 class="text-base font-bold text-white">{{ request.user.username|title }}</h4>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Codice Univoco Sicurezza (UUID)</span>
+                        <p class="text-xs font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-lg inline-block mt-0.5">
+                            {{ member_pass.pass_code }}
+                        </p>
+                    </div>
+                    <p class="text-xs text-gray-400">Avvicina questo QR Code al lettore ottico all'ingresso della palestra per aprire il varco in modalità automatica.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sezione Live Gym Traffic & Peak Hours Tracker -->
+        <div class="bg-gradient-to-br from-gray-900 via-gray-900 to-cyan-950/30 border border-cyan-500/30 rounded-2xl p-6 shadow-2xl space-y-6 mt-8 relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4 relative z-10">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">📊</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            Live Gym Traffic <span class="bg-cyan-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest">Real-Time</span>
+                        </h3>
+                        <p class="text-xs text-gray-400">Monitora l'affluenza in sala in tempo reale per scegliere il momento migliore per allenarti.</p>
+                    </div>
+                </div>
+                <span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></span>
+                    Sensori Attivi
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center relative z-10">
+                <div class="bg-gray-950/80 border border-gray-800 p-5 rounded-xl text-center space-y-3">
+                    <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Affluenza Attuale in Sala</span>
+                    <div class="text-4xl font-black text-cyan-400 tracking-tight">
+                        {{ gym_status.occupancy_percentage }}%
+                    </div>
+                    <div class="w-full bg-gray-800 h-2.5 rounded-full overflow-hidden">
+                        <div class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full transition-all duration-500" style="width: {{ gym_status.occupancy_percentage }}%;"></div>
+                    </div>
+                    <span class="text-xs font-bold px-3 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 inline-block">
+                        {{ gym_status.status_label }}
+                    </span>
+                </div>
+
+                <div class="bg-gray-950/80 border border-gray-800 p-5 rounded-xl space-y-3 md:col-span-2">
+                    <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold block">Fasce Orarie Consigliate di Oggi</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div class="bg-gray-900 border border-gray-800 p-3 rounded-lg text-center">
+                            <span class="text-gray-500 block text-[10px]">Mattina (08:00 - 12:00)</span>
+                            <span class="text-emerald-400 font-bold mt-1 block">🟢 Molto Tranquillo</span>
+                        </div>
+                        <div class="bg-gray-900 border border-orange-500/30 p-3 rounded-lg text-center bg-orange-500/5">
+                            <span class="text-gray-500 block text-[10px]">Pomeriggio (17:00 - 19:30)</span>
+                            <span class="text-orange-400 font-bold mt-1 block">🟠 Ora di Punta</span>
+                        </div>
+                        <div class="bg-gray-900 border border-gray-800 p-3 rounded-lg text-center">
+                            <span class="text-gray-500 block text-[10px]">Sera (20:30 - 22:00)</span>
+                            <span class="text-emerald-400 font-bold mt-1 block">🟢 Ottimale</span>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-gray-500 italic">💡 I dati si aggiornano automaticamente in base agli accessi registrati dai tornelli smart.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sezione Centro Notifiche Smart -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6 mt-8">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🔔</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Centro Notifiche & Avvisi</h3>
+                        <p class="text-xs text-gray-400">Rimani aggiornato su scadenze, promozioni e comunicazioni dello staff.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    {% if unread_notifications_count > 0 %}
+                        <span class="bg-orange-500 text-white font-bold text-xs px-2.5 py-1 rounded-xl shadow-lg shadow-orange-500/20">
+                            {{ unread_notifications_count }} Nuove
+                        </span>
+                    {% else %}
+                        <span class="bg-gray-800 text-gray-400 text-xs font-semibold px-3 py-1.5 rounded-xl">
+                            Tutto letto
+                        </span>
+                    {% endif %}
+
+                    {% if unread_notifications_count > 0 %}
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="mark_notifications_read" value="1">
+                            <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-xs px-3 py-1.5 rounded-xl transition-all cursor-pointer">
+                                Segna come lette
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                {% for notif in notifications %}
+                    <div class="bg-gray-950/80 border {% if not notif.is_read %}border-orange-500/40 bg-orange-500/5{% else %}border-gray-800{% endif %} rounded-xl p-4 flex items-start justify-between gap-4 transition-all">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-bold text-sm text-white">{{ notif.title }}</h4>
+                                {% if not notif.is_read %}
+                                    <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                                {% endif %}
+                            </div>
+                            <p class="text-xs text-gray-300 leading-relaxed">{{ notif.message }}</p>
+                        </div>
+                        <span class="text-[10px] text-gray-500 whitespace-nowrap">{{ notif.created_at|date:"d M, H:i" }}</span>
+                    </div>
+                {% empty %}
+                    <p class="text-xs text-gray-500 text-center py-6">Nessuna notifica al momento. Sei perfettamente in regola con tutto!</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Sezione Automazioni Smart WhatsApp & SMS -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6 mt-8">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">📱</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Automazioni WhatsApp & SMS</h3>
+                        <p class="text-xs text-gray-400">Storico dei messaggi automatici inviati dal gestionale al tuo recapito.</p>
+                    </div>
+                </div>
+                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Gateway Attivo
+                </span>
+            </div>
+
+            <div class="space-y-3">
+                {% for log in sms_whatsapp_logs %}
+                    <div class="bg-gray-950/80 border border-gray-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-lg {% if log.channel == 'WHATSAPP' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}bg-blue-500/10 text-blue-400 border border-blue-500/20{% endif %}">
+                                    {{ log.channel }}
+                                </span>
+                                <h4 class="font-bold text-sm text-white">{{ log.message_type }}</h4>
+                            </div>
+                            <p class="text-xs text-gray-300 leading-relaxed">{{ log.message_body }}</p>
+                        </div>
+                        <div class="flex items-center justify-between w-full md:w-auto gap-4 border-t md:border-t-0 pt-2 md:pt-0 border-gray-800">
+                            <span class="text-[10px] text-gray-400 font-mono">Tel: {{ log.phone_number|default:"Non specificato" }}</span>
+                            <span class="text-[10px] text-gray-500">{{ log.sent_at|date:"d M Y, H:i" }}</span>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-xs text-gray-500 text-center py-6">Nessun messaggio WhatsApp o SMS ricevuto di recente. Le automazioni si attiveranno in base alle scadenze dei corsi e dell'abbonamento.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Sezione Programma Invita un Amico (Referral) -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6 mt-8">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🎁</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Invita un Amico & Vinci</h3>
+                        <p class="text-xs text-gray-400">Condividi il tuo codice: guadagna 7 giorni extra per ogni amico che si unisce.</p>
+                    </div>
+                </div>
+                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl">
+                    {{ referral_profile.referred_count }} Amici Invitati
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                    <div>
+                        <span class="text-xs text-gray-400 font-semibold block mb-1">Il tuo Codice Invito Personale</span>
+                        <div class="bg-gray-900 border border-gray-800 px-4 py-3 rounded-xl flex items-center justify-between">
+                            <span class="font-mono text-orange-400 font-bold tracking-wider text-sm">{{ referral_profile.code }}</span>
+                            <span class="text-[10px] bg-orange-500/10 text-orange-400 px-2.5 py-1 rounded-lg border border-orange-500/20 font-semibold">Attivo</span>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-gray-500">Fallo inserire al tuo amico al momento della registrazione o nella sua area profilo.</p>
+                </div>
+
+                <form method="POST" class="bg-gray-950/60 border border-gray-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="redeem_referral_code" value="1">
+                    <div>
+                        <label class="block text-xs text-gray-400 font-semibold mb-1">Hai un codice da un amico?</label>
+                        <input type="text" name="referral_code" placeholder="Es. TRUD1GYM..." required
+                            class="w-full bg-gray-900 border border-gray-800 text-white px-3 py-3 rounded-xl text-xs uppercase font-mono focus:outline-none focus:border-orange-500">
+                    </div>
+                    <button type="submit" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-lg shadow-orange-600/20 cursor-pointer">
+                        Riscatta Codice
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sezione TrudAI Smart Workout & Diet Generator -->
+        <div class="bg-gradient-to-br from-gray-900 via-gray-900 to-orange-950/30 border border-orange-500/30 rounded-2xl p-6 shadow-2xl space-y-6 mt-8 relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4 relative z-10">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">🤖</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            TrudAI Engine™ <span class="bg-orange-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest">PRO AI</span>
+                        </h3>
+                        <p class="text-xs text-gray-400">Generatore istantaneo di schede di allenamento e diete personalizzate con intelligenza artificiale.</p>
+                    </div>
+                </div>
+                <span class="bg-orange-500/10 text-orange-400 border border-orange-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl">
+                    Modello v4.0
+                </span>
+            </div>
+
+            <form method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                {% csrf_token %}
+                <input type="hidden" name="generate_ai_plan" value="1">
+                
+                <div>
+                    <label class="block text-xs text-gray-400 font-semibold mb-1">Seleziona Obiettivo</label>
+                    <select name="ai_goal" class="w-full bg-gray-950 border border-gray-800 text-white px-3 py-3 rounded-xl text-xs focus:outline-none focus:border-orange-500">
+                        <option value="Massa Muscolare">Massa Muscolare (Ipertrofia)</option>
+                        <option value="Definizione / Cardio">Definizione / Brucia Grassi</option>
+                        <option value="Forza Pura">Forza Pura & Powerlifting</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 font-semibold mb-1">Livello di Esperienza</label>
+                    <select name="ai_level" class="w-full bg-gray-950 border border-gray-800 text-white px-3 py-3 rounded-xl text-xs focus:outline-none focus:border-orange-500">
+                        <option value="Principiante">Principiante</option>
+                        <option value="Intermedio">Intermedio</option>
+                        <option value="Avanzato">Avanzato</option>
+                    </select>
+                </div>
+
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-lg shadow-orange-600/30 cursor-pointer flex items-center justify-center gap-2">
+                        <span>⚡ Genera Programma AI</span>
+                    </button>
+                </div>
+            </form>
+            <p class="text-[11px] text-gray-500 italic relative z-10">💡 Cliccando su genera, il sistema configurerà all'istante la tua nuova scheda nei box "I Tuoi Piani di Allenamento" e "Piani Nutrizionali" sottostanti.</p>
+        </div>
+
+        <!-- Sezione Galleria Progressi Visivi (Prima & Dopo) -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6 mt-8">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">📸</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Galleria Progressi Visivi</h3>
+                        <p class="text-xs text-gray-400">Carica e monitora la tua trasformazione fisica nel tempo.</p>
+                    </div>
+                </div>
+                <span class="bg-blue-500/10 text-blue-400 border border-blue-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl">
+                    Privato & Sicuro
+                </span>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" class="bg-gray-950/60 border border-gray-800 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center">
+                {% csrf_token %}
+                <input type="hidden" name="upload_progress_photo" value="1">
+                <div class="w-full md:w-auto flex-grow">
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Seleziona Immagine</label>
+                    <input type="file" name="progress_image" accept="image/*" required
+                        class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orange-600 file:text-white hover:file:bg-orange-500 cursor-pointer">
+                </div>
+                <div class="w-full md:w-auto flex-grow">
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Didascalia (es. "Fase di definizione")</label>
+                    <input type="text" name="caption" placeholder="Aggiungi una nota..." 
+                        class="w-full bg-gray-900 border border-gray-800 text-white px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-orange-500">
+                </div>
+                <button type="submit" class="w-full md:w-auto self-end bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-orange-600/20 cursor-pointer">
+                    Carica Foto
+                </button>
+            </form>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+                {% for photo in progress_photos %}
+                    <div class="bg-gray-950/80 border border-gray-800 rounded-xl overflow-hidden shadow-md group">
+                        <div class="h-48 overflow-hidden bg-gray-900 relative">
+                            <img src="{{ photo.image.url }}" alt="Progresso" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-300">
+                        </div>
+                        <div class="p-3">
+                            <span class="text-[10px] text-orange-400 font-semibold block">{{ photo.date|date:"d M Y" }}</span>
+                            <p class="text-xs text-gray-300 mt-1 truncate">{{ photo.caption|default:"Nessuna nota inserita" }}</p>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-xs text-gray-500 col-span-full text-center py-6">Nessuna foto caricata finora. Inizia a immortalare i tuoi progressi!</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- SEZIONE 2: SCHEDE DI ALLENAMENTO -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-gray-800">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-orange-500/10 p-2.5 rounded-xl text-orange-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white tracking-wide">Le Tue Schede di Allenamento</h3>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="print:hidden text-xs text-gray-400 bg-gray-800 px-3 py-1 rounded-full border border-gray-700">💡 Spunta gli esercizi durante il workout</span>
+                    <span class="print:hidden px-3 py-1 text-xs font-semibold rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                        Personalizzate
+                    </span>
+                </div>
+            </div>
+
+            {% if workout_plans %}
+                <div class="space-y-6">
+                    {% for plan in workout_plans %}
+                        <div class="bg-gray-900 border 
+                            {% if forloop.counter == 1 %}border-orange-500/50 shadow-orange-500/10
+                            {% elif forloop.counter == 2 %}border-emerald-500/50 shadow-emerald-500/10
+                            {% elif forloop.counter == 3 %}border-purple-500/50 shadow-purple-500/10
+                            {% else %}border-indigo-500/50 shadow-indigo-500/10{% endif %} 
+                            rounded-2xl p-6 shadow-2xl space-y-6 mt-8 relative overflow-hidden transition-all">
+                            
+                            <div class="absolute -right-10 -top-10 w-40 h-40 
+                                {% if forloop.counter == 1 %}bg-orange-500/10
+                                {% elif forloop.counter == 2 %}bg-emerald-500/10
+                                {% elif forloop.counter == 3 %}bg-purple-500/10
+                                {% else %}bg-indigo-500/10{% endif %} 
+                                rounded-full blur-3xl pointer-events-none"></div>
+
+                            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-3 border-b border-gray-800/60 relative z-10">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="text-xl">
+                                            {% if forloop.counter == 1 %}🔥
+                                            {% elif forloop.counter == 2 %}⚡
+                                            {% elif forloop.counter == 3 %}💎
+                                            {% else %}🚀{% endif %}
+                                        </span>
+                                        <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-widest 
+                                            {% if forloop.counter == 1 %}bg-orange-500/20 text-orange-400 border border-orange-500/30
+                                            {% elif forloop.counter == 2 %}bg-emerald-500/20 text-emerald-400 border border-emerald-500/30
+                                            {% elif forloop.counter == 3 %}bg-purple-500/20 text-purple-400 border border-purple-500/30
+                                            {% else %}bg-indigo-500/20 text-indigo-400 border border-indigo-500/30{% endif %}">
+                                            Scheda #{{ forloop.counter }}
+                                        </span>
+                                    </div>
+                                    <h4 class="text-lg font-bold text-white">{{ plan.title }}</h4>
+                                    {% if plan.description %}
+                                        <p class="text-gray-400 text-sm mt-1">{{ plan.description }}</p>
+                                    {% endif %}
+                                </div>
+                                <div class="flex items-center gap-3 mt-3 md:mt-0 relative z-10">
+                                    <span class="text-xs text-gray-500">Assegnata il {{ plan.created_at|date:"d M Y" }}</span>
+                                    <button onclick="window.print()" class="print:hidden text-xs bg-orange-600 hover:bg-orange-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-md cursor-pointer">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                                        </svg>
+                                        <span>Stampa / PDF</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="overflow-x-auto relative z-10">
+                                <table class="w-full text-left text-sm text-gray-300">
+                                    <thead class="bg-gray-800/80 text-xs uppercase text-gray-400">
+                                        <tr>
+                                            <th class="px-4 py-3 rounded-l-lg">Esercizio</th>
+                                            <th class="px-4 py-3 text-center">Serie</th>
+                                            <th class="px-4 py-3 text-center">Ripetizioni</th>
+                                            <th class="px-4 py-3 text-center">RECUPERO</th>
+                                            <th class="px-4 py-3 text-right rounded-r-lg">Carico / Note</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-800/40">
+                                        {% for exercise in plan.exercises.all %}
+                                            <tr id="row-exercise-{{ exercise.id }}" class="hover:bg-gray-800/20 transition-colors">
+                                                <td class="px-4 py-3 font-semibold text-white">
+                                                    <div class="flex items-center justify-between">
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox" id="check-{{ exercise.id }}" onchange="toggleExercise({{ exercise.id }})" class="print:hidden w-5 h-5 bg-gray-800 border border-gray-600 rounded accent-orange-500 cursor-pointer">
+                                                            <span id="name-{{ exercise.id }}" class="transition-all">{{ exercise.name }}</span>
+                                                        </div>
+                                                        {% if exercise.video_file %}
+                                                            <button onclick="document.getElementById('video-row-{{ exercise.id }}').classList.toggle('hidden')" class="print:hidden text-xs bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer">
+                                                                <span>▶ Guarda Video</span>
+                                                            </button>
+                                                        {% endif %}
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-3 text-center text-orange-400 font-bold">{{ exercise.sets }}</td>
+                                                <td class="px-4 py-3 text-center text-gray-300">{{ exercise.reps }}</td>
+                                                <td class="px-4 py-3 text-center text-gray-400">{{ exercise.rest_time }}</td>
+                                                <td class="px-4 py-3 text-right text-gray-400">
+                                                    {% if exercise.weight %}<span class="text-white font-medium mr-2">Consigliato: {{ exercise.weight }}</span>{% endif %}
+                                                    {% if exercise.notes %}<span class="text-xs text-gray-500 block">({{ exercise.notes }})</span>{% endif %}
+                                                </td>
+                                            </tr>
+
+                                            <tr class="print:hidden bg-gray-900/40 border-b border-gray-800/40">
+                                                <td colspan="5" class="px-4 py-3">
+                                                    <form method="POST" class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="exercise_id" value="{{ exercise.id }}">
+                                                        
+                                                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                                                            <span class="text-gray-400 font-medium">Carico Effettivo:</span>
+                                                            <input type="text" name="actual_weight" placeholder="Es. 75 kg" 
+                                                                   value="{% for ex_id, log in exercise_logs.items %}{% if ex_id == exercise.id %}{{ log.actual_weight|default:'' }}{% endif %}{% endfor %}"
+                                                                   class="bg-gray-800 border border-gray-700 text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-orange-500 w-32">
+                                                        </div>
+
+                                                        <div class="flex items-center gap-2 w-full sm:flex-grow sm:max-w-md">
+                                                            <span class="text-gray-400 font-medium">Nota Trainer:</span>
+                                                            <input type="text" name="feedback" placeholder="Es. Ottima esecuzione, serie dura" 
+                                                                   value="{% for ex_id, log in exercise_logs.items %}{% if ex_id == exercise.id %}{{ log.feedback|default:'' }}{% endif %}{% endfor %}"
+                                                                   class="bg-gray-800 border border-gray-700 text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-orange-500 flex-grow">
+                                                        </div>
+
+                                                        <button type="submit" name="save_exercise_log" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-500 text-white font-semibold px-4 py-1.5 rounded-lg transition-colors cursor-pointer shadow-md">
+                                                            Salva Carico
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+
+                                            {% if exercise.video_file %}
+                                                <tr id="video-row-{{ exercise.id }}" class="print:hidden hidden bg-gray-900/80">
+                                                    <td colspan="5" class="px-4 py-4">
+                                                        <div class="max-w-xl mx-auto">
+                                                            <div class="flex items-center justify-between mb-2">
+                                                                <span class="text-xs font-semibold text-orange-400 uppercase tracking-wider">Tutorial: {{ exercise.name }}</span>
+                                                                <button onclick="document.getElementById('video-row-{{ exercise.id }}').classList.add('hidden')" class="text-xs text-gray-400 hover:text-white px-2 py-1 rounded bg-gray-800">Chiudi ✕</button>
+                                                            </div>
+                                                            <div class="relative w-full overflow-hidden rounded-xl bg-gray-950 shadow-lg">
+                                                                <video controls class="w-full h-auto rounded-xl shadow-md">
+                                                                    <source src="{{ exercise.video_file.url }}" type="video/mp4">
+                                                                    Il tuo browser non supporta la riproduzione video.
+                                                                </video>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            {% endif %}
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="px-4 py-4 text-center text-gray-500">Nessun esercizio inserito in questa scheda.</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8">
+                    <p class="text-gray-400 mb-2">Non hai ancora schede di allenamento assegnate.</p>
+                    <p class="text-xs text-gray-500">Il tuo Personal Trainer ti assegnerà presto un programma personalizzato.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Sezione Hub Video On-Demand (Player Nativo) -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6 mt-8">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🎬</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Hub Video On-Demand & Streaming</h3>
+                        <p class="text-xs text-gray-400">Segui le lezioni dei nostri trainer direttamente in piattaforma.</p>
+                    </div>
+                </div>
+                <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl">
+                    Streaming Nativo HD
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for lesson in video_lessons %}
+                    <div class="bg-gray-950/80 border border-gray-800 rounded-xl overflow-hidden shadow-md flex flex-col justify-between group hover:border-orange-500/40 transition-all">
+                        <div class="h-48 bg-black overflow-hidden relative">
+                            {% if lesson.video_file %}
+                                <video controls class="w-full h-full object-cover">
+                                    <source src="{{ lesson.video_file.url }}" type="video/mp4">
+                                    Il tuo browser non supporta il tag video.
+                                </video>
+                            {% else %}
+                                <div class="flex items-center justify-center h-full text-xs text-gray-500">Video non disponibile</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="p-4 space-y-2 flex-grow">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] bg-orange-500/10 text-orange-400 font-semibold px-2.5 py-1 rounded-lg border border-orange-500/20">
+                                    ⏱️ {{ lesson.duration }}
+                                </span>
+                                <span class="text-[10px] text-gray-400 font-medium">Con {{ lesson.instructor }}</span>
+                            </div>
+                            <h4 class="font-bold text-sm text-white group-hover:text-orange-400 transition-colors">{{ lesson.title }}</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed line-clamp-2">{{ lesson.description }}</p>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-xs text-gray-500 col-span-full text-center py-6">Nessuna video lezione caricata al momento. Aggiungile dal pannello di amministrazione!</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Sezione Smart Equipment & Maintenance Tracker -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6 mt-8">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🏋️‍♂️</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Stato Attrezzi & Sala Pesi</h3>
+                        <p class="text-xs text-gray-400">Verifica in tempo reale l'operatività dei macchinari e segnala eventuali guasti.</p>
+                    </div>
+                </div>
+                <span class="bg-orange-500/10 text-orange-400 border border-orange-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl">
+                    Controllo Manutenzione
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {% for item in equipment_list %}
+                    <div class="bg-gray-950/80 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
+                        <div class="space-y-1">
+                            <span class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">{{ item.category }}</span>
+                            <h4 class="font-bold text-sm text-white">{{ item.name }}</h4>
+                            <span class="text-[11px] block text-gray-400 font-medium">Aggiornato: {{ item.last_check_date|date:"d M Y" }}</span>
+                        </div>
+                        <div>
+                            <span class="text-xs px-2.5 py-1 rounded-lg font-semibold border 
+                                {% if item.status == 'OTTIMO' %}bg-emerald-500/10 text-emerald-400 border-emerald-500/20
+                                {% elif item.status == 'MANUTENZIONE' %}bg-amber-500/10 text-amber-400 border-amber-500/20
+                                {% else %}bg-red-500/10 text-red-400 border-red-500/20{% endif %}">
+                                {{ item.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-xs text-gray-500 col-span-full text-center py-6">Nessun attrezzo registrato nel sistema. Aggiungili dal pannello di amministrazione (/admin/).</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Smart Calorie & Macro Assistant -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-4 mt-8">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h3 class="text-lg font-bold text-white">🔥 Smart Calorie & Macro Calculator</h3>
+                <span class="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-xl border border-emerald-500/30">AI Stima Attiva</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-950/60 border border-gray-800 p-4 rounded-xl">
+                    <span class="text-xs text-gray-400 uppercase font-semibold">Fabbisogno Giornaliero Stimato (TDEE)</span>
+                    <p class="text-2xl font-black text-orange-400 mt-1">{{ estimated_calories|default:"2450" }} <span class="text-xs font-normal text-gray-400">kcal/giorno</span></p>
+                </div>
+                <div class="bg-gray-950/60 border border-gray-800 p-4 rounded-xl">
+                    <span class="text-xs text-gray-400 uppercase font-semibold">Quota Proteico-Nutrizionale Consigliata</span>
+                    <p class="text-2xl font-black text-emerald-400 mt-1">{{ estimated_protein|default:"160" }}g <span class="text-xs font-normal text-gray-400">proteine/giorno</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCRIPT JAVASCRIPT PER LA CHECKLIST INTERATTIVA E MEMORIA LOCALSTORAGE -->
+        <script>
+            function toggleExercise(id) {
+                const checkbox = document.getElementById('check-' + id);
+                const row = document.getElementById('row-exercise-' + id);
+                const nameSpan = document.getElementById('name-' + id);
+                
+                if (checkbox.checked) {
+                    row.classList.add('bg-emerald-950/30', 'opacity-60');
+                    nameSpan.classList.add('line-through', 'text-emerald-400');
+                    localStorage.setItem('exercise_checked_' + id, 'true');
+                } else {
+                    row.classList.remove('bg-emerald-950/30', 'opacity-60');
+                    nameSpan.classList.remove('line-through', 'text-emerald-400');
+                    localStorage.setItem('exercise_checked_' + id, 'false');
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", function() {
+                {% for plan in workout_plans %}
+                    {% for exercise in plan.exercises.all %}
+                        if (localStorage.getItem('exercise_checked_{{ exercise.id }}') === 'true') {
+                            const checkbox = document.getElementById('check-{{ exercise.id }}');
+                            if (checkbox) {
+                                checkbox.checked = true;
+                                toggleExercise({{ exercise.id }});
+                            }
+                        }
+                    {% endfor %}
+                {% endfor %}
+            });
+        </script>
+
+        <!-- SEZIONE: PIANI ALIMENTARI / DIETE -->
+        <div class="print:hidden bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-gray-800">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-orange-500/10 p-2.5 rounded-xl text-orange-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white tracking-wide">I Tuoi Piani Alimentari</h3>
+                </div>
+                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Nutrizione
+                </span>
+            </div>
+
+            {% if diet_plans %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for diet in diet_plans %}
+                        <div class="bg-gray-800/40 border border-gray-800 rounded-xl p-5 flex flex-col justify-between">
+                            <div>
+                                <h4 class="text-lg font-bold text-white">{{ diet.title }}</h4>
+                                {% if diet.description %}
+                                    <p class="text-gray-400 text-sm mt-2">{{ diet.description }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-gray-800/60 flex items-center justify-between">
+                                <span class="text-xs text-gray-500">Assegnato il {{ diet.created_at|date:"d M Y" }}</span>
+                                {% if diet.pdf_file %}
+                                    <a href="{{ diet.pdf_file.url }}" target="_blank" class="text-xs bg-orange-600 hover:bg-orange-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-md">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <span>Scarica PDF Dieta</span>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-6">
+                    <p class="text-gray-400 text-sm">Non hai ancora piani alimentari assegnati sul tuo profilo.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Sezione Gamification & Badge Obiettivi -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6 mt-8">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🏆</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">I tuoi Badge & Obiettivi</h3>
+                        <p class="text-xs text-gray-400">Traguardi sbloccati durante il tuo percorso di allenamento.</p>
+                    </div>
+                </div>
+                <span class="bg-orange-500/10 text-orange-400 border border-orange-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl">
+                    {{ user_badges|length }} Sbloccati
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for badge in user_badges %}
+                    <div class="bg-gray-950/60 border border-gray-800/80 rounded-xl p-4 flex items-start gap-4 hover:border-orange-500/40 transition-all">
+                        <div class="text-3xl bg-gray-900 border border-gray-800 p-3 rounded-2xl shadow-inner flex items-center justify-center">
+                            {{ badge.icon_emoji }}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-sm text-white">{{ badge.title }}</h4>
+                            <p class="text-xs text-gray-400 mt-1 leading-relaxed">{{ badge.description }}</p>
+                            <span class="text-[10px] text-orange-400 font-medium block mt-2">Ottenuto il {{ badge.date_earned|date:"d M Y" }}</span>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-xs text-gray-500 col-span-full text-center py-4">Nessun badge sbloccato al momento.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- SEZIONE 3: CORSI PRENOTATI -->
+        <div class="print:hidden bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-gray-800">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-orange-500/10 p-2.5 rounded-xl text-orange-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white tracking-wide">I Tuoi Corsi Prenotati</h3>
+                </div>
+                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Attive
+                </span>
+            </div>
+
+            {% if course_bookings %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for booking in course_bookings %}
+                        <div class="bg-gray-800/40 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
+                            <div>
+                                <h4 class="text-white font-semibold text-base">{{ booking.course.titolo }}</h4>
+                                <span class="text-xs text-gray-400 block mt-1">Prenotato il {{ booking.booking_date|date:"d M Y, H:i" }}</span>
+                            </div>
+                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                {{ booking.status }}
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-6">
+                    <p class="text-gray-400 text-sm">Non hai ancora effettuato prenotazioni per nessun corso.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- SEZIONE: CORSI DISPONIBILI & PRENOTAZIONE IN TEMPO REALE -->
+        <div class="print:hidden bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl mt-8">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-gray-800">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-orange-500/10 p-2.5 rounded-xl text-orange-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white tracking-wide">Corsi Disponibili & Prenotazioni</h3>
+                </div>
+                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                    Real-Time
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for course in available_courses %}
+                    <div class="bg-gray-950/80 border border-gray-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-widest {% if course.available_spots > 0 %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}bg-red-500/10 text-red-400 border border-red-500/20{% endif %}">
+                                    {% if course.available_spots > 0 %}{{ course.available_spots }} posti liberi{% else %}Completo{% endif %}
+                                </span>
+                                <span class="text-xs text-gray-400">{{ course.schedule_time|date:"d M, H:i" }}</span>
+                            </div>
+                            <h4 class="text-base font-bold text-white">{{ course.title }}</h4>
+                            <p class="text-xs text-gray-400 mt-1">Trainer: <strong class="text-gray-200">{{ course.instructor }}</strong></p>
+                        </div>
+
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="book_course_id" value="{{ course.id }}">
+                            <button type="submit" {% if course.available_spots <= 0 %}disabled{% endif %} 
+                                class="w-full py-2.5 rounded-xl text-xs font-bold transition-all {% if course.available_spots > 0 %}bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-600/20 cursor-pointer{% else %}bg-gray-800 text-gray-500 cursor-not-allowed{% endif %}">
+                                {% if course.available_spots > 0 %}Prenota Posto{% else %}Sold Out{% endif %}
+                            </button>
+                        </form>
+                    </div>
+                {% empty %}
+                    <p class="text-xs text-gray-500 col-span-full text-center py-6">Nessun corso programmato al momento. Aggiungine uno dal pannello admin!</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- SEZIONE 4: MONITORAGGIO PROGRESSI FISICI CON GRAFICO -->
+        <div class="print:hidden bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-orange-500/10 p-2.5 rounded-xl text-orange-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white tracking-wide">Storico e Andamento Progressi</h3>
+                </div>
+                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                    Body Metrics
+                </span>
+            </div>
+
+            {% if progress_records %}
+                <div class="bg-gray-800/40 p-4 rounded-xl border border-gray-800 relative h-72">
+                    <canvas id="weightProgressChart"></canvas>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-300">
+                        <thead class="bg-gray-800/80 text-xs uppercase text-gray-400">
+                            <tr>
+                                <th class="px-4 py-3 rounded-l-lg">Data</th>
+                                <th class="px-4 py-3 text-center">Peso (Kg)</th>
+                                <th class="px-4 py-3 text-center">% Massa Grassa</th>
+                                <th class="px-4 py-3 text-center">% Massa Magra</th>
+                                <th class="px-4 py-3 text-right rounded-r-lg">Note / Osservazioni</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800/40">
+                            {% for record in progress_records %}
+                                <tr class="hover:bg-gray-800/20 transition-colors">
+                                    <td class="px-4 py-3 font-semibold text-white">{{ record.date|date:"d M Y" }}</td>
+                                    <td class="px-4 py-3 text-center text-orange-400 font-bold text-base">{{ record.weight }} kg</td>
+                                    <td class="px-4 py-3 text-center text-gray-300">{% if record.body_fat %}{{ record.body_fat }}%{% else %}-{% endif %}</td>
+                                    <td class="px-4 py-3 text-center text-gray-300">{% if record.muscle_mass %}{{ record.muscle_mass }}%{% else %}-{% endif %}</td>
+                                    <td class="px-4 py-3 text-right text-gray-400 text-xs">{% if record.notes %}{{ record.notes }}{% else %}Nessuna nota{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        const canvasEl = document.getElementById('weightProgressChart');
+                        if (canvasEl) {
+                            const ctx = canvasEl.getContext('2d');
+                            const dates = [{% for record in progress_records %}"{{ record.date|date:'d M Y' }}",{% endfor %}];
+                            const weights = [{% for record in progress_records %}{{ record.weight|stringformat:"f" }},{% endfor %}];
+
+                            new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                    labels: dates.reverse(),
+                                    datasets: [{
+                                        label: 'Peso Corporeo (Kg)',
+                                        data: weights.reverse(),
+                                        borderColor: '#f97316',
+                                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                                        borderWidth: 3,
+                                        pointBackgroundColor: '#f97316',
+                                        pointRadius: 5,
+                                        fill: true,
+                                        tension: 0.3
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            labels: { color: '#9ca3af', font: { family: 'sans-serif' } }
+                                        }
+                                    },
+                                    scales: {
+                                        x: {
+                                            grid: { color: 'rgba(75, 85, 99, 0.2)' },
+                                            ticks: { color: '#9ca3af' }
+                                        },
+                                        y: {
+                                            grid: { color: 'rgba(75, 85, 99, 0.2)' },
+                                            ticks: { color: '#9ca3af' }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    });
+                </script>
+            {% else %}
+                <div class="text-center py-8">
+                    <p class="text-gray-400 mb-2">Nessun dato sui progressi registrato finora.</p>
+                    <p class="text-xs text-gray-500">Il trainer aggiornerà regolarmente i tuoi dati corporei in questa sezione.</p>
+                </div>
+            {% endif %}
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-800 text-gray-400 py-12 px-6 mt-16">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+            
+            <div class="space-y-2 text-center md:text-left">
+                <h2 class="text-2xl font-extrabold text-orange-400">𝕿𝕽𝕬𝕺 <span class="text-white">𝕲𝖄𝕸𝕾</span></h2>
+                <p class="text-xs text-gray-500">La piattaforma definitiva per la gestione e l'allenamento avanzato.</p>
+            </div>
+
+            <div class="flex items-center space-x-5">
+                <a href="#" class="w-10 h-10 rounded-xl bg-gray-950 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-orange-400 hover:border-orange-500/50 transition duration-200 shadow-md" aria-label="Instagram">
+                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                    </svg>
+                </a>
+                <a href="#" class="w-10 h-10 rounded-xl bg-gray-950 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-orange-400 hover:border-orange-500/50 transition duration-200 shadow-md" aria-label="Facebook">
+                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                        <path d="M9 8H6v4h3v12h5V12h3.642L18 8h-4V6.333C14 5.378 14.5 5 15.5 5H18V0h-3.808C10.559 0 9 1.588 9 4.7V8z"/>
+                    </svg>
+                </a>
+                <a href="#" class="w-10 h-10 rounded-xl bg-gray-950 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-orange-400 hover:border-orange-500/50 transition duration-200 shadow-md" aria-label="TikTok">
+                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="text-xs text-gray-500 text-center md:text-right">
+                <p>&copy; 2026 Trao Gym Platform. Tutti i diritti riservati.</p>
+                <p class="mt-1 text-gray-600">Sviluppato con passione per l'eccellenza.</p>
+            </div>
+
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Benvenuto - Assets Palestra</title>
+    <style>
+        body {
+            background-color: #0d1117; /* Sfondo blu scuro coordinato */
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .welcome-card {
+            background-color: #0C111F; /* Box scuro stile card */
+            padding: 50px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            border: 1px solid #30363d;
+        }
+        h1 {
+            margin-bottom: 10px;
+            color: #ffffff;
+            font-size: 28px;
+        }
+        p {
+            color: #8b949e;
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+        .btn-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .btn-primary {
+            background-color: #f97316; /* Arancione coordinato */
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: block;
+        }
+        .btn-primary:hover {
+            background-color: #ea580c;
+        }
+        .btn-secondary {
+            background-color: transparent;
+            color: #ffffff;
+            border: 1px solid #30363d;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            display: block;
+        }
+        .btn-secondary:hover {
+            background-color: #21262d;
+            border-color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="welcome-card">
+        <h1>Assets Palestra</h1>
+        <p>La piattaforma SaaS professionale per la gestione intelligente della tua palestra.</p>
+        
+        <div class="btn-container">
+            <a href="{% url 'login' %}" class="btn-primary">Accedi al tuo account</a>
+            <a href="{% url 'registrazione' %}" class="btn-secondary">Registrati ora</a>
+        </div>
+    </div>
+
+</body>
+</html>

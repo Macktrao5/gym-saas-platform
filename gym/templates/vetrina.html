@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Vetrina Palestre - Gym SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .text-shadow-custom {
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 1px 3px rgba(0, 0, 0, 0.9);
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen p-6 md:p-10">
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold mb-2">Le Nostre Palestre Partner</h1>
+            <p class="text-gray-400">Seleziona una palestra per accedere ai corsi online dedicati, scoprire le attrezzature in sala e gestire l'abbonamento.</p>
+        </header>
+
+        <!-- Barra di Ricerca Integrata con Pulsante a Destra -->
+        <form method="GET" action="{% url 'vetrina_palestre' %}" class="mb-6 max-w-xl mx-auto">
+            <div class="relative flex items-center bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden p-1.5 focus-within:border-orange-500 transition shadow-lg">
+                <input type="text" name="citta" value="{{ citta_selezionata }}" placeholder="Cerca per città (es. Barletta)..." 
+                       class="w-full bg-transparent text-white px-4 py-3 focus:outline-none text-base">
+                
+                <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition flex-shrink-0">
+                    Cerca
+                </button>
+                
+                {% if citta_selezionata %}
+                    <a href="{% url 'vetrina_palestre' %}" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-3 rounded-xl transition ml-2 text-sm flex-shrink-0">
+                        Reset
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+        
+        <!-- Griglia delle Palestre -->
+        <div class="space-y-8">
+            {% for palestra in palestre %}
+                <!-- Card Immersiva a Schermo Intero -->
+                <div class="relative rounded-3xl overflow-hidden border border-gray-800 shadow-2xl transition hover:border-orange-500/50 min-h-[520px] flex flex-col justify-between group">
+                    
+                    <!-- Immagine di sfondo -->
+                    <div class="absolute inset-0 z-0">
+                        {% if palestra.immagine_copertina %}
+                            <img src="{{ palestra.immagine_copertina.url }}" alt="{{ palestra.nome }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                        {% else %}
+                            <div class="w-full h-full bg-gray-900"></div>
+                        {% endif %}
+                        <!-- Sfumatura scura per leggibilità -->
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/80 to-black/40"></div>
+                    </div>
+
+                    <!-- Contenuto Superiore: Badge, Titolo e Descrizione -->
+                    <div class="relative z-10 p-6 md:p-8 space-y-3">
+                        <span class="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block">Partner Ufficiale</span>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-white text-shadow-custom tracking-tight">{{ palestra.nome }}</h2>
+                        <!-- Valutazione a Stelle -->
+                        <div class="flex items-center gap-2 mt-2">
+                            <div class="flex text-yellow-400">
+                                <span>⭐</span>
+                            </div>
+                            <span class="text-sm font-bold text-white">
+                                {% if palestra.media_recensioni > 0 %}
+                                    {{ palestra.media_recensioni }} / 5 ({{ palestra.recensioni.count }} recensioni)
+                                {% else %}
+                                    Nessuna recensione
+                                {% endif %}
+                            </span>
+                        </div>
+
+
+                        
+                        <!-- Descrizione generata su misura -->
+                        <p class="text-gray-200 text-sm md:text-base text-shadow-custom leading-relaxed max-w-2xl pt-1">
+                            {% if palestra.descrizione_breve %}
+                                {{ palestra.descrizione_breve }}
+                            {% else %}
+                                Un centro fitness d'eccellenza progettato per offrire un'esperienza di allenamento totale. Dotato di un'area sala pesi all'avanguardia con attrezzature professionali di ultima generazione, macchinari isotonici e rack per ogni gruppo muscolare. Gestisci i tuoi progressi, prenota corsi esclusivi e accedi ai tornelli in modo smart grazie alla nostra tecnologia digitale integrata.
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Contenuto Inferiore: Contatti, Mappa e Pulsante -->
+                    <div class="relative z-10 p-6 md:p-8 flex flex-col gap-4 pt-4">
+                        
+                        <!-- Informazioni di Contatto e Posizione -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                            <!-- Indirizzo con link a Google Maps -->
+                            {% if palestra.indirizzo %}
+                                <a href="https://www.google.com/maps/search/?api=1&query={{ palestra.indirizzo|urlencode }},+{{ palestra.citta|urlencode }}" 
+                                   target="_blank" 
+                                   class="flex items-center gap-3 bg-black/40 hover:bg-black/60 backdrop-blur-md p-3 rounded-xl transition border border-white/10 text-gray-200">
+                                    <svg class="w-5 h-5 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    <span class="truncate">📍 {{ palestra.indirizzo }}, {{ palestra.citta }} (Apri Mappa)</span>
+                                </a>
+                            {% endif %}
+
+                            <!-- Telefono -->
+                            {% if palestra.telefono %}
+                                <div class="flex items-center gap-3 bg-black/40 backdrop-blur-md p-3 rounded-xl border border-white/10 text-gray-200">
+                                    <svg class="w-5 h-5 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                                    <span>📞 Tel: {{ palestra.telefono }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Pulsante di Accesso -->
+                        <div class="pt-2">
+                            <a href="{% url 'palestra_detail' palestra.slug %}" class="flex items-center justify-between w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-6 rounded-xl transition text-base shadow-lg transform hover:scale-[1.01]">
+                                <span>Esplora struttura, attrezzature e corsi</span>
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="text-gray-400 text-center py-10">Nessuna palestra disponibile al momento.</p>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

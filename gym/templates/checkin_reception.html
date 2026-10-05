@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reception Check-in - TRUD GYMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-white font-sans antialiased min-h-screen flex flex-col justify-between">
+
+    <header class="bg-gray-900 border-b border-gray-800 py-4 px-6">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <h1 class="text-xl font-black tracking-wider text-white">TRUD <span class="text-orange-500">GYMS RECEPTION</span></h1>
+            <a href="{% url 'profilo_utente' %}" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold px-4 py-2 rounded-xl transition-all">Torna al Profilo</a>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto w-full py-10 px-6 flex-grow space-y-8">
+        
+        <!-- Box di Scansione / Input -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl space-y-6">
+            <div class="border-b border-gray-800 pb-3">
+                <h3 class="text-xl font-bold text-white">Simulatore / Scanner Ingressi</h3>
+                <p class="text-xs text-gray-400 mt-1">Inserisci o simula la lettura del QR Code della tessera del socio.</p>
+            </div>
+
+            {% if result_message %}
+                <div class="p-4 rounded-xl text-sm font-medium border {% if is_success %}bg-emerald-500/10 text-emerald-400 border-emerald-500/30{% else %}bg-red-500/10 text-red-400 border-red-500/30{% endif %}">
+                    {{ result_message }}
+                </div>
+            {% endif %}
+
+            <form method="POST" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-gray-400 mb-2">Stringa QR Code o Username</label>
+                    <input type="text" name="qr_data" placeholder="Es. TRUD-GYMS-ACCESS-palestra" required
+                           class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-orange-500 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-600/20 cursor-pointer">
+                    Verifica e Registra Ingresso
+                </button>
+            </form>
+        </div>
+
+        <!-- Ultimi Accessi Registrati -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+            <h3 class="text-lg font-bold text-white mb-4">Ultime Presenze in Palestra</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-300">
+                    <thead class="bg-gray-800/80 text-xs uppercase text-gray-400">
+                        <tr>
+                            <th class="px-4 py-3 rounded-l-lg">Utente</th>
+                            <th class="px-4 py-3 text-center">Data e Ora</th>
+                            <th class="px-4 py-3 text-right rounded-r-lg">Esito</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800/40">
+                        {% for check in recent_checkins %}
+                            <tr class="hover:bg-gray-800/20 transition-colors">
+                                <td class="px-4 py-3 font-semibold text-white">{{ check.user.username }}</td>
+                                <td class="px-4 py-3 text-center text-gray-400">{{ check.timestamp|date:"d M Y, H:i:s" }}</td>
+                                <td class="px-4 py-3 text-right">
+                                    {% if check.is_valid %}
+                                        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400">Consentito</span>
+                                    {% else %}
+                                        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-500/20 text-red-400">Scaduto</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="px-4 py-4 text-center text-gray-500">Nessun accesso registrato di recente.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+</body>
+</html>

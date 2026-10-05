@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ categoria.nome }} - {{ palestra.nome }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-white font-sans antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800 py-4 px-6 sticky top-0 z-50 shadow-md">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-extrabold text-orange-400">Gym <span class="text-white">SaaS</span></h1>
+            <a href="javascript:history.back()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white px-4 py-2 rounded-lg text-sm transition font-medium border border-gray-700">
+                ← Torna Indietro
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-5xl mx-auto w-full py-12 px-6 flex-grow space-y-10">
+        
+        <!-- COPERTINA DELLA SOTTOCATEGORIA (Banner in alto con foto, titolo e descrizione) -->
+        <section class="relative rounded-3xl overflow-hidden border border-gray-800 shadow-2xl bg-gray-900 p-8 md:p-12">
+            {% if categoria.immagine %}
+            <div class="absolute inset-0 z-0">
+                <img src="{{ categoria.immagine.url }}" alt="{{ categoria.nome }}" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black/80"></div>
+            </div>
+            {% endif %}
+            
+            <div class="relative z-10 space-y-4 max-w-2xl">
+                <span class="inline-block text-xs font-bold px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase tracking-widest shadow-lg">
+                    Sottocategoria Ufficiale
+                </span>
+                
+                <h2 class="text-3xl md:text-5xl font-black text-white tracking-tight">{{ categoria.nome }}</h2>
+                
+                <p class="text-gray-300 text-base leading-relaxed">
+                    {{ categoria.descrizione }}
+                </p>
+            </div>
+        </section>
+
+        <!-- SEZIONE CON I SINGOLI ATTREZZI (Ognuno nella sua carta separata e indipendente) -->
+        <section class="space-y-6">
+            <div class="border-l-4 border-orange-500 pl-4">
+                <h3 class="text-2xl font-extrabold text-white">Elenco Attrezzi della Categoria</h3>
+                <p class="text-gray-400 text-sm">Tutti i macchinari e le stazioni disponibili in questa sezione.</p>
+            </div>
+
+            <div class="space-y-6 pt-2">
+                {% for attrezzo in attrezzi %}
+                <!-- SINGOLA CARTA PER OGNI ATTREZZO -->
+                <div class="bg-gray-900 border border-gray-800/80 rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row gap-6 items-center">
+                    {% if attrezzo.immagine %}
+                    <div class="w-full md:w-1/3 h-52 overflow-hidden rounded-2xl bg-gray-950 border border-gray-800 flex-shrink-0 shadow-md">
+                        <img src="{{ attrezzo.immagine.url }}" alt="{{ attrezzo.nome }}" class="w-full h-full object-cover">
+                    </div>
+                    {% endif %}
+                    
+                    <div class="w-full md:w-2/3 space-y-4">
+                        <h4 class="text-2xl md:text-3xl font-bold text-white">{{ attrezzo.nome }}</h4>
+                        <p class="text-gray-300 text-sm md:text-base leading-relaxed">{{ attrezzo.descrizione }}</p>
+                        
+                        <div class="border-t border-gray-800 pt-4">
+                            <span class="inline-block text-xs font-semibold bg-gray-950 border border-gray-800 text-gray-300 px-3 py-1.5 rounded-xl">
+                                <strong class="text-orange-400 uppercase tracking-wide">Muscoli target:</strong> {{ attrezzo.muscoli_coinvolti }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="bg-gray-900 border border-gray-800 rounded-3xl p-8 text-center text-gray-500 shadow-xl">
+                    <p class="text-sm italic">Nessun attrezzo inserito in questa sottocategoria al momento.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-800 py-6 text-center text-gray-500 text-xs">
+        <p>&copy; 2026 Gym SaaS Platform. Tutti i diritti riservati.</p>
+    </footer>
+
+</body>
+</html>

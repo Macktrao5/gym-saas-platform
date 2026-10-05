@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Controllo Ingressi</title>
+    <style>
+        body { 
+            background-color: #030712; 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+        }
+        .wrapper { 
+            width: 100%; 
+            max-width: 480px; 
+            padding: 20px; 
+            box-sizing: border-box; 
+        }
+        .container { 
+            background: #111827; 
+            border-radius: 16px; 
+            padding: 40px; 
+            width: 100%; 
+            box-sizing: border-box; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+            border: 2px solid #374151; 
+            text-align: center; 
+        }
+        h2 { font-size: 24px; margin-bottom: 20px; color: #ffffff; }
+        p { color: #9CA3AF; font-size: 16px; }
+        .btn-start { 
+            background: #3882F6; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            font-size: 16px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); 
+        }
+        .btn-start:hover { background: #2563EB; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <!-- Pulsante Torna alla Dashboard -->
+        <div style="margin-bottom: 20px; text-align: left;">
+            <a href="{% url 'tenant_dashboard' %}" style="display: inline-flex; align-items: center; gap: 10px; background-color: #f97316; color: #ffffff; padding: 10px 18px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <svg style="width: 16px; height: 16px; color: #ffffff;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Torna alla Dashboard
+            </a>
+        </div>
+
+        <div style="background: #1F2937; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; display: inline-block; border: 1px solid #374151;">
+            <span style="color: #9CA3AF; font-size: 14px;">Presenti in Sala:</span> 
+            <span id="LiveCounter" style="color: #10B981; font-size: 18px; font-weight: bold;">--</span>
+        </div>
+
+        <!-- Box principale del Monitor Ingressi -->
+        <div class="container">
+            <h2>Controllo Ingressi Palestra</h2>
+            <button id="activateAudio" class="btn-start" onclick="unlockAudio()">Attiva Monitor Ingresso</button>
+            <p id="statusMessage" style="margin-top: 20px;">Scansiona il codice del cliente</p>
+        </div>
+
+        <!-- Contenitore per la webcam e lo scanner QR -->
+        <div style="max-width: 400px; margin: 20px auto; text-align: center;">
+            <div id="reader" style="width: 100%; border-radius: 12px; overflow: hidden;"></div>
+        </div>
+    </div>
+
+    <!-- Inclusione della libreria html5-qrcode -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            console.log(`QR Code letto con successo: ${decodedText}`);
+            
+            html5QrcodeScanner.clear().then(_ => {
+                let passCode = decodedText;
+                
+                // Se il QR code contiene un URL completo, estraiamo solo l'ultima parte (il codice del pass)
+                if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) {
+                    try {
+                        const urlObj = new URL(decodedText);
+                        const segments = urlObj.pathname.split('/').filter(Boolean);
+                        passCode = segments[segments.length - 1];
+                    } catch (e) {
+                        console.error("Errore nel parsing dell'URL del QR code", e);
+                    }
+                }
+
+                // Reindirizza correttamente alla rotta Django con il singolo codice pulito
+                window.location.href = `/checkin/${encodeURIComponent(passCode)}/`;
+            }).catch(error => {
+                console.error("Errore nella chiusura dello scanner:", error);
+            });
+        }
+
+        function onScanFailure(error) {
+            // Gestione silenziosa degli errori di scansione fotogramma per fotogramma
+        }
+
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            false
+        );
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    </script>
+
+    <script>
+        function unlockAudio() {
+            if ('speechSynthesis' in window) {
+                let utterance = new SpeechSynthesisUtterance("Monitor ingressi attivato");
+                utterance.lang = 'it-IT';
+                window.speechSynthesis.speak(utterance);
+            }
+            document.getElementById('activateAudio').style.display = 'none';
+            document.getElementById('statusMessage').innerText = "In attesa... Scansiona il codice del cliente";
+        }
+    </script>
+    <script>
+        function updateLiveCounter() {
+            fetch('/api/live-count/')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('LiveCounter').innerText = data.count;
+                })
+                .catch(error => console.error('Errore nel recupero presenze:', error));
+        }
+
+        // Aggiorna il contatore ogni 5 secondi
+        setInterval(updateLiveCounter, 5000);
+        updateLiveCounter(); // Esegui subito all'avvio
+    </script>
+</body>
+</html>

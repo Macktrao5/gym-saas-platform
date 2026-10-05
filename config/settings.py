@@ -140,4 +140,4 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
 # Configurazione email per sviluppo locale (stampa nel terminale)
-LOGIN_URL = '/accounts/login/'  # O l'URL corretto della tua pagina di login
+LOGIN_URL = '/login/'  # O l'URL corretto della tua pagina di login
